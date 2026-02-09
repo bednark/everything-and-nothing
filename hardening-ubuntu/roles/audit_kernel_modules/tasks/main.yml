@@ -1,0 +1,27 @@
+- name: 1.1.1/3.2 Remove unnecessary filesystem/network kernel modules if loaded
+  modprobe:
+    name: "{{ item }}"
+    state: absent
+  with_items: "{{ kernel_modules }}"
+
+- name: 1.1.1/3.2 Blacklist unnecessary filesystem/network kernel modules
+  community.general.kernel_blacklist:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ kernel_modules }}"
+
+- name: 1.1.1/3.2 Set /bin/false as the default action for unnecessary filesystem/network kernel modules
+  lineinfile:
+    path: /etc/modprobe.d/blacklist-ansible.conf
+    line: "install {{ item }} /bin/false"
+    state: present
+  with_items: "{{ kernel_modules }}"
+
+- name: 3.3 Configure secure network kernel parameters
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/999-custom.conf
+  loop: "{{ network_kernel_parameters }}"

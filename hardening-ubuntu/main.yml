@@ -1,0 +1,43 @@
+- name: Hardening Ubuntu - CIS Benchmark
+  hosts: all
+  become: true
+  tasks:
+    - name: Audit and manage kernel modules
+      include_role:
+        name: audit_kernel_modules
+
+    - name: Audit additional processes
+      include_role:
+        name: audit_additional_process
+
+    - name: Audit warning banners
+      include_role:
+        name: audit_warning_banners
+
+    - name: Audit services
+      include_role:
+        name: audit_services
+
+    - name: Audit time synchronization
+      include_role:
+        name: audit_time_settings
+    
+    - name: Audit cron
+      include_role:
+        name: audit_crontab
+
+    - name: Audit firewall
+      include_role:
+        name: audit_firewall
+
+    - name: Audit access to the system
+      include_role:
+        name: audit_access
+
+    - name: Audit system logging
+      include_role:
+        name: audit_system_logging
+
+    - name: Audit AppArmor
+      include_role:
+        name: audit_app_armor

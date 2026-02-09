@@ -1,0 +1,7 @@
+- name: 2.1/2.2 Remove unnecessary server and client services
+  apt:
+    name: "{{ item }}"
+    state: absent
+    autoremove: yes
+    purge: yes
+  with_items: "{{ services_to_remove }}"

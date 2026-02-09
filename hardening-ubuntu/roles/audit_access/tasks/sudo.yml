@@ -1,0 +1,36 @@
+- name: 5.2.1 Ensure sudo is installed
+  apt:
+    name: sudo
+    state: present
+
+- name: 5.2.2–5.2.6 Configure sudo environment
+  copy:
+    dest: /etc/sudoers.d/00-custom
+    content: |
+      Defaults use_pty
+      Defaults logfile=/var/log/sudo.log
+      Defaults env_reset, timestamp_timeout=15
+    owner: root
+    group: root
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'
+
+- name: 5.2.4 Remove NOPASSWD
+  replace:
+    path: /etc/sudoers
+    regexp: '^(.*)\s+NOPASSWD:\s*(ALL.*)$'
+    replace: '\1 \2'
+    validate: '/usr/sbin/visudo -cf %s'
+
+- name: 5.2.5 Remove !authenticate
+  lineinfile:
+    path: /etc/sudoers
+    regexp: '^Defaults\s+!authenticate'
+    state: absent
+    validate: '/usr/sbin/visudo -cf %s'
+
+- name: 5.2.7 Restrict su command
+  lineinfile:
+    path: /etc/pam.d/su
+    line: 'auth required pam_wheel.so use_uid group=sudo'
+    state: present

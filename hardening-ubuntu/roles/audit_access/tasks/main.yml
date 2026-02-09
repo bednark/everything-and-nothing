@@ -1,0 +1,11 @@
+- name: 5.1 Include SSH hardening tasks
+  import_tasks: ssh.yml
+
+- name: 5.2 Include sudo and privilege escalation hardening
+  import_tasks: sudo.yml
+
+- name: 5.4.2 Include system account restrictions
+  import_tasks: system_accounts.yml
+
+- name: 5.4.3 Include user environment configuration
+  import_tasks: user_environment.yml

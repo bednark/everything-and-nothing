@@ -1,0 +1,187 @@
+- name: 6.1.1.1 Enable and start systemd-journald
+  service:
+    name: systemd-journald
+    enabled: true
+    state: started
+
+- name: 6.1.1.2 Ensure journald directories are mode 2755
+  file:
+    path: "{{ item }}"
+    mode: '2755'
+    recurse: no
+    state: directory
+  loop:
+    - /var/log/journal
+    - /run/log/journal
+
+- name: 6.1.1.2 Find journald log files
+  find:
+    paths:
+      - /var/log/journal
+      - /run/log/journal
+    patterns: '*.journal'
+    file_type: file
+  register: journald_logs
+  ignore_errors: true
+
+- name: 6.1.1.2 Set mode 0640 on journald log files
+  file:
+    path: "{{ item.path }}"
+    mode: '0640'
+  loop: "{{ journald_logs.files }}"
+  when: journald_logs.matched > 0
+
+- name: 6.1.1.3 Configure journald log rotation in drop-in file
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}={{ item.value }}'
+    create: yes
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - { key: 'SystemMaxUse', value: '1G' }
+    - { key: 'SystemKeepFree', value: '500M' }
+    - { key: 'RuntimeMaxUse', value: '200M' }
+    - { key: 'RuntimeKeepFree', value: '50M' }
+    - { key: 'MaxFileSec', value: '1month' }
+    - { key: 'Compress', value: 'yes' }
+    - { key: 'Storage', value: 'persistent' }
+
+- name: 6.1.4.1 Find all regular log files in /var/log
+  find:
+    paths: /var/log
+    recurse: yes
+    file_type: file
+  register: log_files
+
+- name: 6.1.4.1 Ensure permissions on all log files are 0640 or more restrictive
+  file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: '0640'
+  loop: "{{ log_files.files }}"
+
+- name: 6.2.1.1 Ensure auditd is installed
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - auditd
+    - audispd-plugins
+
+- name: 6.2.1.2 Ensure auditd service is enabled and running
+  service:
+    name: auditd
+    state: started
+    enabled: true
+
+- name: 6.2.1.3/4 Read current GRUB_CMDLINE_LINUX value
+  command: grep '^GRUB_CMDLINE_LINUX=' /etc/default/grub
+  register: grub_cmdline
+  changed_when: false
+  failed_when: false
+
+- name: 6.2.1.3/4 Check if audit=1 and audit_backlog_limit are present in GRUB_CMDLINE_LINUX
+  set_fact:
+    audit_enabled: "{{ 'audit=1' in grub_cmdline.stdout }}"
+    audit_backlog_limit: "{{ 'audit_backlog_limit=8192' in grub_cmdline.stdout }}"
+
+- name: 6.2.1.3/4 Ensure audit options are present in GRUB_CMDLINE_LINUX
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: "GRUB_CMDLINE_LINUX=\"{{ grub_cmdline.stdout | regex_replace('^GRUB_CMDLINE_LINUX=\"(.*)\"', '\\1') }} audit=1 audit_backlog_limit=8192\""
+  when: not audit_enabled and not audit_backlog_limit
+  register: audit_grub_config
+
+- name: 6.2.1.3/4 Update GRUB if audit_backlog_limit was modified
+  command: update-grub
+  when: audit_grub_config.changed
+
+- name: 6.2.2.[3-4] Ensure auditd.conf is configured
+  lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: '^{{ item.key }}\s*='
+    line: '{{ item.key }} = {{ item.value }}'
+    state: present
+  with_items:
+    - { key: 'max_log_file_action', value: 'keep_logs' }
+    - { key: 'disk_error_action', value: 'syslog' }
+    - { key: 'disk_full_action', value: 'single' }
+    - { key: 'admin_space_left_action', value: 'single' }
+    - { key: 'space_left_action', value: 'single' }
+
+- name: Ensure auditd rule file is in place
+  copy:
+    src: templates/99-custom-audit.rules
+    dest: /etc/audit/rules.d/99-custom-audit.rules
+    owner: root
+    group: root
+    mode: '0640'
+  register: audit_rule_file
+
+- name: Reload auditd rules
+  command: augenrules --load
+  when: audit_rule_file.changed
+
+- name: Restart auditd
+  service:
+    name: auditd
+    state: restarted
+  when: audit_rule_file.changed
+
+- name: Ensure audit tools are not writable by group/others (go-w)
+  become: true
+  vars:
+    audit_tools:
+      - /sbin/auditctl
+      - /sbin/aureport
+      - /sbin/ausearch
+      - /sbin/autrace
+      - /sbin/auditd
+      - /sbin/augenrules
+  block:
+    - name: Stat audit tools
+      stat:
+        path: "{{ item }}"
+      loop: "{{ audit_tools }}"
+      register: audit_tools_stat
+
+    - name: Fix permissions on audit tools (u=rwx,go=rx)
+      file:
+        path: "{{ item.stat.path }}"
+        mode: "u=rwx,go=rx"
+      loop: "{{ audit_tools_stat.results }}"
+      when: item.stat.exists
+
+- name: 6.3.1 Ensure AIDE is installed
+  apt:
+    name: aide
+    state: present
+
+- name: 6.3.2 Ensure filesystem integrity is regularly checked.
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  with_items:
+    - dailyaidecheck.service
+    - dailyaidecheck.timer
+
+- name: 6.3.3 Ensure cryptographic mechanisms are used to protect the integrity
+  lineinfile:
+    path: /etc/aide/aide.conf
+    line: "{{ item }}"
+  with_items:
+    - /usr/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512
+    - /usr/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512
+    - /usr/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512
+    - /usr/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512
+    - /usr/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
+    - /usr/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
+
+- name: 6.3.4 Ensure AIDE database is initialized
+  command: aideinit

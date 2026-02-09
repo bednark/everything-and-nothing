@@ -1,0 +1,58 @@
+- name: 4.2.1 Install ufw
+  apt:
+    name: ufw
+    state: present
+
+- name: 4.2.2 Remove iptables-persistent and nftables
+  apt:
+    name:
+      - iptables-persistent
+      - nftables
+    state: absent
+    autoremove: yes
+    purge: yes
+
+- name: 4.2.4 Allow loopback inbound traffic
+  ufw:
+    rule: allow
+    interface: lo
+    direction: in
+
+- name: 4.2.4 Allow loopback outbound traffic
+  ufw:
+    rule: allow
+    interface: lo
+    direction: out
+
+- name: 4.2.4 Deny loopback traffic on non-loopback interfaces (IPv4 + IPv6)
+  ufw:
+    rule: deny
+    from_ip: "{{ item }}"
+    to_ip: any
+    direction: in
+  loop:
+    - 127.0.0.0/8
+    - ::1
+
+- name: 4.2.5 Allow all outbound connections (IPv4 + IPv6)
+  ufw:
+    rule: allow
+    direction: out
+
+- name: 4.2.6 Allow incoming SSH (OpenSSH)
+  ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: 4.2.7 Set ufw default deny policy
+  ufw:
+    policy: "{{ item.policy }}"
+    direction: "{{ item.direction }}"
+  loop:
+    - { policy: 'deny', direction: 'incoming' }
+    - { policy: 'deny', direction: 'outgoing' }
+    - { policy: 'deny', direction: 'routed' }
+
+- name: 4.2.3 Enable and start ufw
+  ufw:
+    state: enabled

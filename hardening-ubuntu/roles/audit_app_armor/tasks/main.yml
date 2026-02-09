@@ -1,0 +1,36 @@
+- name: 1.3.1.1 Ensuer AppArmor is installed.
+  apt:
+    name: apparmor
+    state: present
+  with_items:
+    - apparmor
+    - apparmor-utils
+
+- name: 1.3.1.1 Ensuer AppArmor is started and enabled.
+  service:
+    name: apparmor
+    state: started
+    enabled: true
+
+- name: 1.3.1.2 Read current GRUB_CMDLINE_LINUX value
+  command: grep '^GRUB_CMDLINE_LINUX=' /etc/default/grub
+  register: grub_cmdline
+  changed_when: false
+  failed_when: false
+
+- name: 1.3.1.2 Check if apparmor is present in GRUB_CMDLINE_LINUX
+  set_fact:
+    apparmor_enabled: "{{ 'apparmor=1' in grub_cmdline.stdout }}"
+    apparmor_security: "{{ 'security=apparmor' in grub_cmdline.stdout }}"
+
+- name: 1.3.1.2 Ensure apparmor options are present in GRUB_CMDLINE_LINUX
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: "GRUB_CMDLINE_LINUX=\"{{ grub_cmdline.stdout | regex_replace('^GRUB_CMDLINE_LINUX=\"(.*)\"', '\\1') }} apparmor=1 security=apparmor\""
+  when: not apparmor_enabled and not apparmor_security
+  register: apparmor_grub_config
+
+- name: 1.3.1.2 Update GRUB if apparmor options were modified
+  command: update-grub
+  when: apparmor_grub_config.changed

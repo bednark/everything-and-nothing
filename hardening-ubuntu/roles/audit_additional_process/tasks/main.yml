@@ -1,0 +1,57 @@
+- name: 1.5.1 Enable address space layout randomization (ASLR)
+  sysctl:
+    name: kernel.randomize_va_space
+    value: 2
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/999-custom.conf
+
+- name: 1.5.2 Restrict ptrace access
+  sysctl:
+    name: kernel.yama.ptrace_scope
+    value: 1
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/999-custom.conf
+
+- name: 1.5.3 Disable core dumps via PAM limits
+  lineinfile:
+    path: /etc/security/limits.d/99-custom.conf
+    regexp: '^\*\s+hard\s+core\s+'
+    line: '* hard core 0'
+    create: yes
+
+- name: 1.5.3 Disable core dumps via sysctl
+  sysctl:
+    name: fs.suid_dumpable
+    value: 0
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/999-custom.conf
+
+- name: 1.5.4 Remove prelink package
+  apt:
+    name: prelink
+    state: absent
+    autoremove: yes
+    purge: yes
+
+- name: 1.5.5 Stop and disable automatic error reporting (apport)
+  service:
+    name: apport
+    state: stopped
+    enabled: no
+
+- name: 1.5.5 Remove apport package
+  apt:
+    name: apport
+    state: absent
+    autoremove: yes
+    purge: yes
+
+- name: 1.7.1 Remove GNOME Display Manager (gdm/gdm3)
+  apt:
+    name: gdm*
+    state: absent
+    autoremove: yes
+    purge: yes

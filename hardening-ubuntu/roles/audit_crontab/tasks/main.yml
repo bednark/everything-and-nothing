@@ -1,0 +1,38 @@
+- name: 2.4.1.1 Ensure cron package is installed
+  apt:
+    name: cron
+    state: present
+
+- name: 2.4.1.1 Ensure cron daemon is enabled and running
+  service:
+    name: cron
+    state: started
+    enabled: yes
+
+- name: 2.4.1.[2-7] Set permissions and ownership on cron configuration files
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    owner: root
+    group: root
+  with_items: "{{ crontab_files }}"
+
+- name: 2.4.1.8 Ensure cron is restricted to authorized users
+  lineinfile:
+    path: /etc/cron.allow
+    create: yes
+    line: "{{ item }}"
+    state: present
+    owner: root
+    group: root
+    mode: '0600'
+  with_items:
+    - root
+    - serwis
+
+- name: 2.4.2.1 Ensure at is not installed
+  apt:
+    name: at
+    state: absent
+    autoremove: yes
+    purge: yes

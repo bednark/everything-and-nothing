@@ -1,0 +1,30 @@
+- name: 5.4.3.1 Ensure nologin is not in /etc/shells
+  lineinfile:
+    path: /etc/shells
+    regexp: '^/usr/sbin/nologin$'
+    state: absent
+
+- name: 5.4.3.2 Ensure TMOUT is less than or equal to 900
+  lineinfile:
+    path: "/etc/profile"
+    regexp: '^TMOUT='
+    line: "TMOUT=900"
+
+- name: Ensure TMOUT is exported
+  lineinfile:
+    path: "/etc/profile"
+    regexp: '^export TMOUT'
+    line: "export TMOUT"
+
+- name: Ensure TMOUT is readonly
+  lineinfile:
+    path: "/etc/profile"
+    regexp: '^readonly TMOUT'
+    line: "readonly TMOUT"
+
+- name: 5.4.3.3 Set default umask to 027
+  lineinfile:
+    path: /etc/profile
+    regexp: '^umask'
+    line: 'umask 027'
+    create: yes

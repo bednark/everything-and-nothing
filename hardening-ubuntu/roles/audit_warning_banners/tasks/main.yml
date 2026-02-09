@@ -1,0 +1,34 @@
+- name: 1.6.1 Remove message of the day (motd)
+  file:
+    path: /etc/motd
+    state: absent
+
+- name: 1.6.2 Configure local login warning banner
+  copy:
+    content: "Authorized uses only. All activity may be monitored and reported.\n"
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 1.6.3 Configure remote login warning banner
+  copy:
+    content: "Authorized uses only. All activity may be monitored and reported.\n"
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 1.6.5 Set permissions on /etc/issue
+  file:
+    path: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 1.6.6 Set permissions on /etc/issue.net
+  file:
+    path: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'

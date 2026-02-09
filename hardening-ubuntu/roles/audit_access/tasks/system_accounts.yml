@@ -1,0 +1,9 @@
+- name: 5.4.2.6 Set root umask to 027
+  lineinfile:
+    path: "{{ item }}"
+    regexp: '^umask'
+    line: 'umask 0027'
+    create: yes
+  with_items:
+    - /root/.bash_profile
+    - /root/.bashrc

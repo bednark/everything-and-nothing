@@ -1,0 +1,27 @@
+services_to_remove:
+  - autofs
+  - avahi-daemon
+  - isc-dhcp-server
+  - bind9
+  - dnsmasq
+  - vsftpd
+  - slapd
+  - dovecot-imapd
+  - dovecot-pop3d
+  - nfs-kernel-server
+  - ypserv
+  - cups
+  - rpcbind
+  - samba
+  - snmpd
+  - tftpd-hpa
+  - squid
+  - xinetd
+  - xserver-common
+  - nis
+  - rsh-client
+  - talk
+  - telnet
+  - inetutils-telnet
+  - ftp
+  - tnftp

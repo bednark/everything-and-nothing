@@ -1,0 +1,37 @@
+- name: 2.3.1.1 Remove chrony to enforce single time synchronization daemon
+  apt:
+    name: chrony
+    state: absent
+    autoremove: yes
+    purge: yes
+
+- name: 2.3.2.1 Install systemd-timesyncd
+  apt:
+    name: systemd-timesyncd
+    state: present
+
+- name: 2.3.2.2 Enable and start systemd-timesyncd
+  service:
+    name: systemd-timesyncd
+    state: started
+    enabled: yes
+
+- name: 2.3.2.1 Configure NTP servers for systemd-timesyncd
+  lineinfile:
+    path: /etc/systemd/timesyncd.conf.d/99-custom.conf
+    create: yes
+    line: "{{ item }}"
+    state: present
+    owner: root
+    group: root
+    mode: '0600'
+  with_items:
+    - NTP=tempus1.gum.gov.pl
+    - FallbackNTP=tempus2.gum.gov.pl
+  register: timesyncd_config
+
+- name: 2.3.2.1 Restart systemd-timesyncd if NTP config changed
+  service:
+    name: systemd-timesyncd
+    state: restarted
+  when: timesyncd_config.changed
